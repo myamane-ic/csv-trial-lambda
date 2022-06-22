@@ -5,6 +5,7 @@ import rds_config
 import s3_config
 import sys
 import boto3
+import datetime
 
 #log settings
 logger = logging.getLogger()
@@ -30,21 +31,43 @@ except pyodbc.Error as e:
 logger.info("SUCCESS: Connection to RDS SQLServer instance succeeded")
 
 #s3 setting
-s3 = boto3.resource('s3')
 src_file_encoding=s3_config.src_file_encoding
+bucket_name = s3_config.bucket_name
+s3 = boto3.resource('s3')
+bucket = s3.Bucket(bucket_name)
 
 def lambda_handler(event, context):
-    # APIからのRequestBodyを出力
-    print(event['body'])
-    # TODO implement
+
+    #APIからのRequest内容を出力
+    print(event)
+    taskId = event['taskId']
+    print(taskId)
+
+    #SQL開始
+    dt_now = datetime.datetime.now().strftime('%Y/%m/%d %H:%M:%S')
+    logger.info("SQL Start: "+dt_now)
+    with conn.cursor() as cur:
+        # 1.taskIdを基に親レコード検索
+        sql = 'select * from task where id = \'' + taskId + '\''
+        print(sql)
+        cur.execute(sql)
+        result = cur.fetchone()
+        print(result)
+        
+    # 2.file_idカラムからファイル名取得
+    fileName = result.file_id
+    print(fileName)
+
+    # 3.S3からファイルDL
+    object = bucket.Object(fileName)
+    response = object.get()
+    body = response['Body'].read().decode(src_file_encoding)
+    
+    print(body)
+    # 4.ファイル内容をクラスに置き換え
+    # 5.以下ループ
+    # 5.1 子テーブルに登録
     return {
         'statusCode': 200,
         'body': json.dumps('Hello from Lambda!')
     }
-    
-    # 1.taskIdを基に親レコード検索
-    # 2.file_idカラムからファイル名取得
-    # 3.S3からファイルDL
-    # 4.ファイル内容をクラスに置き換え
-    # 5.以下ループ
-    # 5.1 子テーブルに登録
