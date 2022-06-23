@@ -1,1 +1,0 @@
-src_file_encoding = "UTF-8"
