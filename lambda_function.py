@@ -1,13 +1,12 @@
 import pyodbc
 import json
 import logging
-import rds_config
-import s3_config
 import sys
 import boto3
 import io
 import csv
 import datetime
+import os
 
 #log settings
 logger = logging.getLogger()
@@ -15,17 +14,17 @@ logger.setLevel(logging.INFO)
 
 #rds settings
 driver = '{ODBC Driver 17 for SQL Server}'
-sqlServer = rds_config.db_host
-sqlDatabase = rds_config.db_name
-sqlPort = rds_config.db_port
-sqlUsername = rds_config.db_username
-sqlPassword = rds_config.db_password
+sql_host = os.environ['DB_HOST']
+sql_port = os.environ['DB_PORT']
+sql_database = os.environ['DB_NAME']
+sql_username = os.environ['DB_USERNAME']
+sql_password = os.environ['DB_PASSWORD']
 
 #create rds connection
 print(pyodbc.drivers())
 print('Attempting Connection...')
 try:
-    conn = pyodbc.connect(f"DRIVER={driver};SERVER={sqlServer};PORT={sqlPort};DATABASE={sqlDatabase};UID={sqlUsername};PWD={sqlPassword}");
+    conn = pyodbc.connect(f"DRIVER={driver};SERVER={sql_host};PORT={sql_port};DATABASE={sql_database};UID={sql_username};PWD={sql_password}");
 except pyodbc.Error as e:
     logger.error("ERROR: Unexpected error: Could not connect to SQLServer instance.")
     logger.error(e)
@@ -33,8 +32,8 @@ except pyodbc.Error as e:
 logger.info("SUCCESS: Connection to RDS SQLServer instance succeeded")
 
 #s3 setting
-src_file_encoding=s3_config.src_file_encoding
-bucket_name = s3_config.bucket_name
+src_file_encoding=os.environ['SRC_FILE_ENCODING']
+bucket_name = os.environ['BUCKET_NAME']
 s3 = boto3.resource('s3')
 bucket = s3.Bucket(bucket_name)
 
@@ -85,7 +84,6 @@ def lambda_handler(event, context):
         for taskData in taskDatas:
             # 5.1 子テーブルに登録
             sql = 'insert into task_detail (task_id, content) values (' + str(taskId) + ', \'' + taskData.content + '\')'
-            print(sql)
             cur.execute(sql)
         conn.commit()
     return {
